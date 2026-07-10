@@ -2,7 +2,13 @@ import os
 import json
 import stripe
 import requests
+import logging
 from flask import Flask, request, jsonify
+
+from followup_scheduler import start_scheduler, run_cycle, process_contact, get_contact_detail
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -143,21 +149,102 @@ def stripe_webhook():
     return jsonify({"status": "ok", "result": result}), 200
 
 
+# ── Follow-up scheduler endpoints ─────────────────────────────────────────────
+
+@app.route("/followup/status", methods=["GET"])
+def followup_status():
+    """
+    Returns the current scheduler configuration.
+    Use this to confirm the scheduler is running and check its settings.
+    """
+    enabled = os.environ.get("FOLLOWUP_ENABLED", "false").lower() == "true"
+    return jsonify({
+        "followup_scheduler": "enabled" if enabled else "disabled",
+        "scorecard_list_id": int(os.environ.get("SCORECARD_LIST_ID", "44")),
+        "poll_interval_hours": float(os.environ.get("FOLLOWUP_POLL_HOURS", "1")),
+        "from_email": os.environ.get("FOLLOWUP_FROM_EMAIL", "francisco@theceoshred.com"),
+        "schedule": {"email_a_days": 1, "email_b_days": 3, "email_c_days": 6},
+        "note": "Set FOLLOWUP_ENABLED=true in Render env vars to activate.",
+    }), 200
+
+
+@app.route("/followup/test", methods=["POST"])
+def followup_test():
+    """
+    Manually trigger the follow-up logic for a specific email address.
+    Used for testing before going live.
+
+    POST body (JSON):
+      { "email": "test@example.com" }
+
+    The contact must already exist in Brevo with list 44 membership.
+    This endpoint processes the contact immediately — useful for verifying
+    token substitution and email delivery without waiting for the scheduler.
+    """
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip()
+    if not email:
+        return jsonify({"error": "email is required"}), 400
+
+    detail = get_contact_detail(email)
+    if not detail:
+        return jsonify({"error": f"Contact {email} not found in Brevo"}), 404
+
+    try:
+        process_contact({"email": email})
+        return jsonify({"status": "processed", "email": email,
+                        "note": "Check your inbox. Emails are only sent for due windows based on list-add date."}), 200
+    except Exception as e:
+        logger.exception(f"Test processing failed for {email}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/followup/run-now", methods=["POST"])
+def followup_run_now():
+    """
+    Manually trigger a full scheduler cycle across all list-44 contacts.
+    Useful for testing or forcing a catch-up run.
+    Protected by a simple shared secret via X-Admin-Key header.
+    """
+    admin_key = os.environ.get("ADMIN_KEY", "")
+    if admin_key and request.headers.get("X-Admin-Key", "") != admin_key:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        run_cycle()
+        return jsonify({"status": "cycle complete"}), 200
+    except Exception as e:
+        logger.exception(f"Manual run-now failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Standard endpoints ─────────────────────────────────────────────────────────
+
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "service": "CEO Shred Stripe Webhook"}), 200
+    return jsonify({"status": "ok", "service": "CEO Shred Stripe Webhook + Followup Scheduler"}), 200
 
 
 @app.route("/", methods=["GET"])
 def index():
     return jsonify({
-        "service": "CEO Shred Stripe Webhook Handler",
-        "version": "1.0.0",
+        "service": "CEO Shred Webhook Handler + Scorecard Follow-Up Scheduler",
+        "version": "2.0.0",
         "endpoints": {
-            "POST /webhook/stripe": "Stripe webhook receiver",
-            "GET /health": "Health check"
+            "POST /webhook/stripe":   "Stripe webhook receiver",
+            "GET  /health":           "Health check",
+            "GET  /followup/status":  "Scheduler config and status",
+            "POST /followup/test":    "Test follow-up for a specific email",
+            "POST /followup/run-now": "Trigger a full scheduler cycle (admin)",
         }
     }), 200
+
+
+# ── Startup ────────────────────────────────────────────────────────────────────
+
+# Start the background follow-up scheduler when the app boots.
+# It only activates if FOLLOWUP_ENABLED=true is set in the environment.
+start_scheduler()
 
 
 if __name__ == "__main__":

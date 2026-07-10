@@ -3,11 +3,26 @@ services:
     name: ceo-shred-webhook
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 30
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --keep-alive 5
     envVars:
+      # ── Stripe (existing) ──────────────────────────────────────────────────
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      # ── Brevo (existing) ──────────────────────────────────────────────────
       - key: BREVO_API_KEY
         sync: false
+      # ── Scorecard Follow-Up Scheduler (new) ───────────────────────────────
+      - key: FOLLOWUP_ENABLED
+        value: "false"          # Set to "true" after testing to go live
+      - key: SCORECARD_LIST_ID
+        value: "44"
+      - key: FOLLOWUP_POLL_HOURS
+        value: "1"
+      - key: FOLLOWUP_FROM_EMAIL
+        value: "francisco@theceoshred.com"
+      - key: FOLLOWUP_FROM_NAME
+        value: "Francisco Torres"
+      - key: ADMIN_KEY
+        sync: false             # Optional: set a secret to protect /followup/run-now
