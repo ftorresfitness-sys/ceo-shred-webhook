@@ -1,6 +1,7 @@
 """
 CEO Shred — Scorecard Follow-Up Email Templates
 Emails A, B, C for contacts added to Brevo list 44.
+Email R (Result) is the instant transactional email sent on scorecard submission.
 All tokens are replaced before sending; no Brevo template IDs needed.
 """
 
@@ -48,6 +49,47 @@ def _wrap(body_html: str) -> str:
     }}
     .body p {{
       margin: 0 0 18px 0;
+    }}
+    .score-box {{
+      background: #0d0d0d;
+      color: #ffffff;
+      padding: 24px 28px;
+      margin: 24px 0;
+      border-radius: 2px;
+    }}
+    .score-box .score-label {{
+      font-family: Arial, sans-serif;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #999;
+      margin: 0 0 4px 0;
+    }}
+    .score-box .score-value {{
+      font-size: 28px;
+      font-weight: bold;
+      color: #ffffff;
+      margin: 0 0 12px 0;
+    }}
+    .score-box .score-detail {{
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      color: #ccc;
+      margin: 4px 0;
+    }}
+    .guide-box {{
+      background: #f9f5ec;
+      border-left: 3px solid #B68B3B;
+      padding: 18px 22px;
+      margin: 24px 0;
+    }}
+    .guide-box p {{
+      margin: 0 0 10px 0;
+      font-size: 15px;
+    }}
+    .guide-box a {{
+      color: #B68B3B;
+      font-weight: bold;
     }}
     .cta-wrap {{
       text-align: center;
@@ -101,6 +143,90 @@ def _wrap(body_html: str) -> str:
 </html>"""
 
 
+# ── Email R — Instant result (sent immediately on scorecard submission) ────────
+
+EMAIL_R_SUBJECT = "Your Executive Hormone Score — {archetype}"
+
+def email_r_subject(archetype: str) -> str:
+    return f"Your Executive Hormone Score — {archetype}"
+
+def email_r_html(firstname: str, archetype: str, tier: str,
+                 t_score: int, i_score: int, c_score: int,
+                 composite: int, weakest: str) -> str:
+    tier_label = tier.upper() if tier else "FUNCTIONAL"
+    body = f"""
+      <p>Hi {firstname},</p>
+
+      <p>Your results are in. Here&rsquo;s what the diagnostic found.</p>
+
+      <div class="score-box">
+        <p class="score-label">Overall Score</p>
+        <p class="score-value">{composite} / 100 &mdash; {tier_label}</p>
+        <p class="score-detail">Testosterone &nbsp;&middot;&nbsp; {t_score}/100</p>
+        <p class="score-detail">Insulin &nbsp;&middot;&nbsp; {i_score}/100</p>
+        <p class="score-detail">Cortisol &nbsp;&middot;&nbsp; {c_score}/100</p>
+        <p class="score-detail" style="margin-top:12px; color:#f0c060;">
+          Weakest corner: <strong>{weakest}</strong>
+        </p>
+      </div>
+
+      <p>Your archetype is <strong>{archetype}</strong>. This is the pattern that best
+      describes where your endocrine system is right now &mdash; and where the leverage is.</p>
+
+      <p>Most men at your level have the discipline. What they&rsquo;re missing is the
+      correct target. Your weakest corner (<strong>{weakest}</strong>) is the upstream
+      signal that&rsquo;s been running the wrong program. Fix that first and everything
+      else responds.</p>
+
+      <div class="guide-box">
+        <p><strong>Your Testosterone Rebuild Guide</strong></p>
+        <p>A practical framework for the first 30 days. Read it before you do anything else.</p>
+        <p><a href="{GUIDE_LINK}">Download the guide &rarr;</a></p>
+      </div>
+
+      <p>If you want a custom protocol built around your specific numbers, the Executive
+      Diagnostic is the next step. 30 minutes. I&rsquo;ll tell you exactly what to fix
+      and in what order. The $150 is credited in full if you move into coaching.</p>
+
+      <div class="cta-wrap">
+        <a class="cta" href="{APPLY_LINK}">Book Your Executive Diagnostic &mdash; $150 &rarr;</a>
+      </div>
+
+      <p class="sig">&mdash; Francisco &middot; The CEO Shred</p>
+    """
+    return _wrap(body)
+
+def email_r_text(firstname: str, archetype: str, tier: str,
+                 t_score: int, i_score: int, c_score: int,
+                 composite: int, weakest: str) -> str:
+    tier_label = tier.upper() if tier else "FUNCTIONAL"
+    return f"""Hi {firstname},
+
+Your results are in.
+
+OVERALL SCORE: {composite}/100 — {tier_label}
+Testosterone: {t_score}/100
+Insulin: {i_score}/100
+Cortisol: {c_score}/100
+Weakest corner: {weakest}
+
+Your archetype is {archetype}. This is the pattern that best describes where your endocrine system is right now — and where the leverage is.
+
+Most men at your level have the discipline. What they're missing is the correct target. Your weakest corner ({weakest}) is the upstream signal that's been running the wrong program. Fix that first and everything else responds.
+
+YOUR TESTOSTERONE REBUILD GUIDE
+A practical framework for the first 30 days. Read it before you do anything else.
+{GUIDE_LINK}
+
+If you want a custom protocol built around your specific numbers, the Executive Diagnostic is the next step. 30 minutes. I'll tell you exactly what to fix and in what order. The $150 is credited in full if you move into coaching.
+
+Book Your Executive Diagnostic — $150:
+{APPLY_LINK}
+
+— Francisco · The CEO Shred
+"""
+
+
 # ── Email A — +1 day ──────────────────────────────────────────────────────────
 
 EMAIL_A_SUBJECT = "It was never about willpower"
@@ -122,6 +248,13 @@ def email_a_html(firstname: str, weakest: str) -> str:
       <p>Change the signal and the body follows. Your <strong>{weakest}</strong> score
       is exactly where to start.</p>
 
+      <div class="guide-box">
+        <p><strong>In case you missed it</strong></p>
+        <p>Your Testosterone Rebuild Guide is still waiting. If you haven&rsquo;t read it yet,
+        start there &mdash; it covers the first 30 days.</p>
+        <p><a href="{GUIDE_LINK}">Read the guide &rarr;</a></p>
+      </div>
+
       <div class="cta-wrap">
         <a class="cta" href="{APPLY_LINK}">Book Your Executive Diagnostic &mdash; $150 &rarr;</a>
       </div>
@@ -142,6 +275,10 @@ Your scorecard flagged {weakest} as your weakest area. That's not a small detail
 Here's the part most men get wrong: this isn't a discipline problem. You already have discipline — you run a company. If effort alone fixed it, you'd already be lean and sharp. The issue is upstream of effort. Your endocrine system is sending the wrong signals, and no amount of willpower out-argues a hormone.
 
 Change the signal and the body follows. Your {weakest} score is exactly where to start.
+
+IN CASE YOU MISSED IT
+Your Testosterone Rebuild Guide is still waiting. If you haven't read it yet, start there — it covers the first 30 days.
+{GUIDE_LINK}
 
 Book Your Executive Diagnostic — $150:
 {APPLY_LINK}
@@ -223,6 +360,11 @@ def email_c_html(firstname: str, total: str) -> str:
       <p>I keep a small number of diagnostic slots each week. If you want yours, take it now.
       If the timing&rsquo;s wrong, no problem &mdash; the guide is yours to keep either way.</p>
 
+      <div class="guide-box">
+        <p><strong>Your Testosterone Rebuild Guide</strong></p>
+        <p><a href="{GUIDE_LINK}">Read it here &rarr;</a></p>
+      </div>
+
       <div class="cta-wrap">
         <a class="cta" href="{APPLY_LINK}">Book Your Executive Diagnostic &mdash; $150 &rarr;</a>
       </div>
@@ -237,6 +379,8 @@ def email_c_text(firstname: str, total: str) -> str:
 You took the scorecard for a reason. Your score ({total}) and your weak corner didn't happen by accident, and they won't fix themselves.
 
 I keep a small number of diagnostic slots each week. If you want yours, take it now. If the timing's wrong, no problem — the guide is yours to keep either way.
+
+Your Testosterone Rebuild Guide: {GUIDE_LINK}
 
 Book Your Executive Diagnostic — $150:
 {APPLY_LINK}

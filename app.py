@@ -150,6 +150,122 @@ def stripe_webhook():
     return jsonify({"status": "ok", "result": result}), 200
 
 
+# ── Scorecard webhook — instant result email ─────────────────────────────────
+
+@app.route("/webhook/scorecard", methods=["POST", "OPTIONS"])
+def scorecard_webhook():
+    """
+    Receives scorecard submission from the Lovable frontend.
+    1. Upserts contact into Brevo list 44 with scorecard attributes.
+    2. Sends an instant transactional result email with score + guide link.
+
+    Expected JSON body:
+      first_name, email, phone (optional),
+      T_score, I_score, C_score, composite_score,
+      archetype, tier, archetype_tag, score_tag,
+      submitted_at, source
+    """
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        resp = app.make_default_options_response()
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        return resp
+
+    from email_templates import (
+        email_r_subject, email_r_html, email_r_text,
+    )
+    from followup_scheduler import send_transactional_email
+
+    data = request.get_json(silent=True) or {}
+
+    email      = (data.get("email") or "").strip().lower()
+    first_name = (data.get("first_name") or "").strip()
+    phone      = (data.get("phone") or None)
+    t_score    = int(data.get("T_score") or 0)
+    i_score    = int(data.get("I_score") or 0)
+    c_score    = int(data.get("C_score") or 0)
+    composite  = int(data.get("composite_score") or 0)
+    archetype  = (data.get("archetype") or "Unknown").strip()
+    tier       = (data.get("tier") or "functional").strip()
+    submitted  = data.get("submitted_at") or ""
+
+    if not email:
+        return jsonify({"error": "email is required"}), 400
+
+    # Determine weakest corner from scores
+    scores = {"Testosterone": t_score, "Insulin": i_score, "Cortisol & Stress": c_score}
+    weakest = min(scores, key=scores.get)
+
+    SCORECARD_LIST_ID = int(os.environ.get("SCORECARD_LIST_ID", "44"))
+
+    # 1. Upsert contact into Brevo list 44 with scorecard attributes
+    upsert_url = "https://api.brevo.com/v3/contacts"
+    contact_payload = {
+        "email": email,
+        "updateEnabled": True,
+        "attributes": {
+            "FIRSTNAME": first_name,
+            "SCORECARD_TOTAL": composite,
+            "SCORECARD_WEAKEST": weakest,
+            "SCORECARD_ARCHETYPE": archetype,
+            "SCORECARD_TIER": tier,
+            "SCORECARD_T": t_score,
+            "SCORECARD_I": i_score,
+            "SCORECARD_C": c_score,
+        },
+        "listIds": [SCORECARD_LIST_ID],
+    }
+    if phone:
+        contact_payload["attributes"]["SMS"] = phone
+
+    try:
+        r = requests.post(upsert_url, headers=BREVO_HEADERS, json=contact_payload, timeout=10)
+        if r.status_code == 400 and "Contact already exist" in r.text:
+            # Update attributes and add to list
+            update_url = f"https://api.brevo.com/v3/contacts/{email}"
+            requests.put(update_url, headers=BREVO_HEADERS,
+                         json={"attributes": contact_payload["attributes"],
+                               "listIds": [SCORECARD_LIST_ID]}, timeout=10)
+        app.logger.info(f"Scorecard contact upserted: {email} (list {SCORECARD_LIST_ID})")
+    except Exception as e:
+        app.logger.error(f"Brevo upsert failed for {email}: {e}")
+        # Don't block — still try to send the email
+
+    # 2. Send instant result email
+    try:
+        subject = email_r_subject(archetype)
+        html    = email_r_html(first_name or "there", archetype, tier,
+                               t_score, i_score, c_score, composite, weakest)
+        text    = email_r_text(first_name or "there", archetype, tier,
+                               t_score, i_score, c_score, composite, weakest)
+        ok = send_transactional_email(
+            to_email=email,
+            to_name=first_name or email,
+            subject=subject,
+            html_content=html,
+            text_content=text,
+        )
+        if ok:
+            app.logger.info(f"Instant result email sent to {email}")
+        else:
+            app.logger.error(f"Instant result email FAILED for {email}")
+    except Exception as e:
+        app.logger.error(f"Instant result email exception for {email}: {e}")
+        ok = False
+
+    resp = jsonify({
+        "status": "ok",
+        "email_sent": ok,
+        "contact_list": SCORECARD_LIST_ID,
+        "archetype": archetype,
+        "weakest": weakest,
+    })
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    return resp, 200
+
+
 # ── Follow-up scheduler endpoints ─────────────────────────────────────────────
 
 @app.route("/followup/status", methods=["GET"])
@@ -296,6 +412,7 @@ def index():
         "service": "CEO Shred Webhook Handler + Scorecard Follow-Up Scheduler",
         "version": "2.0.0",
         "endpoints": {
+            "POST /webhook/scorecard": "Scorecard submission — upserts contact + sends instant result email",
             "POST /webhook/stripe":   "Stripe webhook receiver",
             "GET  /health":           "Health check",
             "GET  /followup/status":  "Scheduler config and status",
