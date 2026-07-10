@@ -1,5 +1,6 @@
 import os
 import json
+import threading
 import stripe
 import requests
 import logging
@@ -175,14 +176,28 @@ def followup_test():
     Used for testing before going live.
 
     POST body (JSON):
-      { "email": "test@example.com" }
+      { "email": "test@example.com", "force_email": "A" }
+
+    If force_email is set to "A", "B", or "C", that email is sent immediately
+    regardless of how long ago the contact was added to list 44.
+    Without force_email, normal day-elapsed logic applies.
 
     The contact must already exist in Brevo with list 44 membership.
-    This endpoint processes the contact immediately — useful for verifying
-    token substitution and email delivery without waiting for the scheduler.
     """
+    from followup_scheduler import (
+        get_contact_detail, send_transactional_email, mark_sent, get_sent_flags,
+        SCORECARD_LIST_ID
+    )
+    from email_templates import (
+        email_a_subject, email_a_html, email_a_text,
+        email_b_subject, email_b_html, email_b_text,
+        email_c_subject, email_c_html, email_c_text,
+    )
+
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip()
+    force_email = (data.get("force_email") or "").strip().upper()
+
     if not email:
         return jsonify({"error": "email is required"}), 400
 
@@ -190,32 +205,82 @@ def followup_test():
     if not detail:
         return jsonify({"error": f"Contact {email} not found in Brevo"}), 404
 
-    try:
-        process_contact({"email": email})
-        return jsonify({"status": "processed", "email": email,
-                        "note": "Check your inbox. Emails are only sent for due windows based on list-add date."}), 200
-    except Exception as e:
-        logger.exception(f"Test processing failed for {email}: {e}")
-        return jsonify({"error": str(e)}), 500
+    attrs = detail.get("attributes") or {}
+    firstname = attrs.get("FIRSTNAME") or "there"
+    weakest   = attrs.get("SCORECARD_WEAKEST") or "hormonal health"
+    total     = attrs.get("SCORECARD_TOTAL") or "unknown"
+    sent_flags = get_sent_flags(detail)
+
+    if force_email in ("A", "B", "C"):
+        # Force-send the specified email regardless of timing
+        try:
+            if force_email == "A":
+                ok = send_transactional_email(
+                    to_email=email, to_name=firstname,
+                    subject=email_a_subject(firstname),
+                    html_content=email_a_html(firstname, weakest),
+                    text_content=email_a_text(firstname, weakest),
+                )
+            elif force_email == "B":
+                ok = send_transactional_email(
+                    to_email=email, to_name=firstname,
+                    subject=email_b_subject(firstname),
+                    html_content=email_b_html(firstname, weakest),
+                    text_content=email_b_text(firstname, weakest),
+                )
+            else:  # C
+                ok = send_transactional_email(
+                    to_email=email, to_name=firstname,
+                    subject=email_c_subject(firstname),
+                    html_content=email_c_html(firstname, total),
+                    text_content=email_c_text(firstname, total),
+                )
+            if ok:
+                mark_sent(email, force_email, sent_flags)
+                return jsonify({
+                    "status": "sent",
+                    "email": email,
+                    "email_type": force_email,
+                    "tokens": {"FIRSTNAME": firstname, "SCORECARD_WEAKEST": weakest, "SCORECARD_TOTAL": total},
+                    "note": "Check your inbox. FOLLOWUP_SENT attribute updated in Brevo."
+                }), 200
+            else:
+                return jsonify({"error": "Brevo API returned failure — check server logs"}), 500
+        except Exception as e:
+            logger.exception(f"Force-send Email {force_email} failed for {email}: {e}")
+            return jsonify({"error": str(e)}), 500
+    else:
+        # Normal day-elapsed logic
+        try:
+            process_contact({"email": email})
+            return jsonify({"status": "processed", "email": email,
+                            "note": "Check your inbox. Emails are only sent for due windows based on list-add date."}), 200
+        except Exception as e:
+            logger.exception(f"Test processing failed for {email}: {e}")
+            return jsonify({"error": str(e)}), 500
 
 
 @app.route("/followup/run-now", methods=["POST"])
 def followup_run_now():
     """
     Manually trigger a full scheduler cycle across all list-44 contacts.
-    Useful for testing or forcing a catch-up run.
+    Runs in a background thread so the request returns immediately
+    (avoids 30s timeout on Render free plan with large contact lists).
     Protected by a simple shared secret via X-Admin-Key header.
     """
     admin_key = os.environ.get("ADMIN_KEY", "")
     if admin_key and request.headers.get("X-Admin-Key", "") != admin_key:
         return jsonify({"error": "Unauthorized"}), 401
 
-    try:
-        run_cycle()
-        return jsonify({"status": "cycle complete"}), 200
-    except Exception as e:
-        logger.exception(f"Manual run-now failed: {e}")
-        return jsonify({"error": str(e)}), 500
+    def _run():
+        try:
+            run_cycle()
+        except Exception as e:
+            logger.exception(f"Background run-now failed: {e}")
+
+    t = threading.Thread(target=_run, name="manual-run-now", daemon=True)
+    t.start()
+    return jsonify({"status": "cycle started in background — check logs for results"}), 202
 
 
 # ── Standard endpoints ─────────────────────────────────────────────────────────
