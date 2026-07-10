@@ -5,7 +5,7 @@ Email R (Result) is the instant transactional email sent on scorecard submission
 All tokens are replaced before sending; no Brevo template IDs needed.
 """
 
-APPLY_LINK = "https://theceoshred.com/apply"
+APPLY_LINK = "https://calendly.com/franciscofitness/executive-diagnostic"
 GUIDE_LINK = "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view"
 
 # ── Shared HTML wrapper ────────────────────────────────────────────────────────
