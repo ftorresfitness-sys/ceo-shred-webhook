@@ -189,8 +189,8 @@ def followup_test():
         SCORECARD_LIST_ID
     )
     from email_templates import (
-        email_a_subject, email_a_html, email_a_text,
-        email_b_subject, email_b_html, email_b_text,
+        EMAIL_A_SUBJECT, email_a_html, email_a_text,
+        EMAIL_B_SUBJECT, email_b_html, email_b_text,
         email_c_subject, email_c_html, email_c_text,
     )
 
@@ -217,14 +217,14 @@ def followup_test():
             if force_email == "A":
                 ok = send_transactional_email(
                     to_email=email, to_name=firstname,
-                    subject=email_a_subject(firstname),
+                    subject=EMAIL_A_SUBJECT,
                     html_content=email_a_html(firstname, weakest),
                     text_content=email_a_text(firstname, weakest),
                 )
             elif force_email == "B":
                 ok = send_transactional_email(
                     to_email=email, to_name=firstname,
-                    subject=email_b_subject(firstname),
+                    subject=EMAIL_B_SUBJECT,
                     html_content=email_b_html(firstname, weakest),
                     text_content=email_b_text(firstname, weakest),
                 )
