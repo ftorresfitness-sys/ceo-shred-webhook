@@ -413,7 +413,7 @@ def health():
 def index():
     return jsonify({
         "service": "CEO Shred Webhook Handler + Scorecard Follow-Up Scheduler",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "endpoints": {
             "POST /webhook/scorecard": "Scorecard submission — upserts contact + sends instant result email",
             "POST /webhook/stripe":   "Stripe webhook receiver",
