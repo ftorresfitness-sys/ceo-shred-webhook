@@ -232,14 +232,16 @@ def process_contact(contact: dict) -> None:
             mark_sent(email, "A", sent_flags)
             sent_flags.add("A")
 
+    band      = attrs.get("SCORECARD_TIER") or "functional"
+
     # Email B — +3 days
     if "B" not in sent_flags and elapsed_days >= SCHEDULE["B"]:
         ok = send_transactional_email(
             to_email=email,
             to_name=firstname,
             subject=EMAIL_B_SUBJECT,
-            html_content=email_b_html(firstname, weakest),
-            text_content=email_b_text(firstname, weakest),
+            html_content=email_b_html(firstname),
+            text_content=email_b_text(firstname),
         )
         if ok:
             mark_sent(email, "B", sent_flags)
@@ -250,9 +252,9 @@ def process_contact(contact: dict) -> None:
         ok = send_transactional_email(
             to_email=email,
             to_name=firstname,
-            subject=email_c_subject(firstname),
-            html_content=email_c_html(firstname, total),
-            text_content=email_c_text(firstname, total),
+            subject=email_c_subject(firstname, band),
+            html_content=email_c_html(firstname, weakest, total, band),
+            text_content=email_c_text(firstname, weakest, total, band),
         )
         if ok:
             mark_sent(email, "C", sent_flags)

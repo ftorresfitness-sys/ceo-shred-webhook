@@ -5,8 +5,35 @@ Email R (Result) is the instant transactional email sent on scorecard submission
 All tokens are replaced before sending; no Brevo template IDs needed.
 """
 
-APPLY_LINK = "https://calendly.com/franciscofitness/executive-diagnostic"
-GUIDE_LINK = "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view"
+APPLY_LINK = "https://theceoshred.com/apply"
+STACK_LINK = "https://protocols.theceoshred.com/stack"
+
+# Protocol links mapped by weakest corner
+PROTOCOL_MAP = {
+    "Testosterone": {
+        "name": "The Testosterone Protocol",
+        "link": "https://protocols.theceoshred.com/testosterone"
+    },
+    "Cortisol & Stress": {
+        "name": "The Cortisol Reset Protocol",
+        "link": "https://protocols.theceoshred.com/cortisol"
+    },
+    "Insulin": {
+        "name": "The Insulin Resistance Protocol",
+        "link": "https://protocols.theceoshred.com/insulin"
+    }
+}
+
+# Brief links mapped by weakest corner (using the old live brief until new ones are hosted)
+# Old live brief link: https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view
+BRIEF_MAP = {
+    "Testosterone": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view",
+    "Cortisol & Stress": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view",
+    "Insulin": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view"
+}
+
+def get_utm(utm_content: str) -> str:
+    return f"?utm_source=scorecard&utm_medium=email&utm_campaign=repoint&utm_content={utm_content}"
 
 # ── Shared HTML wrapper ────────────────────────────────────────────────────────
 
@@ -49,47 +76,6 @@ def _wrap(body_html: str) -> str:
     }}
     .body p {{
       margin: 0 0 18px 0;
-    }}
-    .score-box {{
-      background: #0d0d0d;
-      color: #ffffff;
-      padding: 24px 28px;
-      margin: 24px 0;
-      border-radius: 2px;
-    }}
-    .score-box .score-label {{
-      font-family: Arial, sans-serif;
-      font-size: 11px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: #999;
-      margin: 0 0 4px 0;
-    }}
-    .score-box .score-value {{
-      font-size: 28px;
-      font-weight: bold;
-      color: #ffffff;
-      margin: 0 0 12px 0;
-    }}
-    .score-box .score-detail {{
-      font-family: Arial, sans-serif;
-      font-size: 13px;
-      color: #ccc;
-      margin: 4px 0;
-    }}
-    .guide-box {{
-      background: #f9f5ec;
-      border-left: 3px solid #B68B3B;
-      padding: 18px 22px;
-      margin: 24px 0;
-    }}
-    .guide-box p {{
-      margin: 0 0 10px 0;
-      font-size: 15px;
-    }}
-    .guide-box a {{
-      color: #B68B3B;
-      font-weight: bold;
     }}
     .cta-wrap {{
       text-align: center;
@@ -142,248 +128,313 @@ def _wrap(body_html: str) -> str:
 </body>
 </html>"""
 
+# ── Email R — Instant result (Email 0) ─────────────────────────────────────────
 
-# ── Email R — Instant result (sent immediately on scorecard submission) ────────
+def email_r_subject(total: int) -> str:
+    return f"Your score: {total} — here's what it means"
 
-EMAIL_R_SUBJECT = "Your Executive Hormone Score — {archetype}"
-
-def email_r_subject(archetype: str) -> str:
-    return f"Your Executive Hormone Score — {archetype}"
-
-def email_r_html(firstname: str, archetype: str, tier: str,
-                 t_score: int, i_score: int, c_score: int,
-                 composite: int, weakest: str) -> str:
-    tier_label = tier.upper() if tier else "FUNCTIONAL"
+def email_r_html(firstname: str, total: int, weakest: str, band: str) -> str:
+    protocol_info = PROTOCOL_MAP.get(weakest, PROTOCOL_MAP["Testosterone"])
+    protocol_name = protocol_info["name"]
+    protocol_link = protocol_info["link"] + get_utm("email0")
+    stack_link = STACK_LINK + get_utm("email0")
+    brief_link = BRIEF_MAP.get(weakest, BRIEF_MAP["Testosterone"])
+    
     body = f"""
-      <p>Hi {firstname},</p>
+      <p>{firstname},</p>
 
-      <p>Your results are in. Here&rsquo;s what the diagnostic found.</p>
+      <p>Your Hormone Scorecard results are in.</p>
 
-      <div class="score-box">
-        <p class="score-label">Overall Score</p>
-        <p class="score-value">{composite} / 100 &mdash; {tier_label}</p>
-        <p class="score-detail">Testosterone &nbsp;&middot;&nbsp; {t_score}/100</p>
-        <p class="score-detail">Insulin &nbsp;&middot;&nbsp; {i_score}/100</p>
-        <p class="score-detail">Cortisol &nbsp;&middot;&nbsp; {c_score}/100</p>
-        <p class="score-detail" style="margin-top:12px; color:#f0c060;">
-          Weakest corner: <strong>{weakest}</strong>
-        </p>
-      </div>
+      <p>Score: {total}. Weakest corner: {weakest}.</p>
 
-      <p>Your archetype is <strong>{archetype}</strong>. This is the pattern that best
-      describes where your endocrine system is right now &mdash; and where the leverage is.</p>
+      <p>That weak corner matters more than the total. {weakest} is the system currently costing you the most — energy, waistline, recovery, drive. The other two can't compensate for it. That's how the hormone triangle works.</p>
 
-      <p>Most men at your level have the discipline. What they&rsquo;re missing is the
-      correct target. Your weakest corner (<strong>{weakest}</strong>) is the upstream
-      signal that&rsquo;s been running the wrong program. Fix that first and everything
-      else responds.</p>
+      <p>I've put together a short brief that explains your result and what's happening underneath it:</p>
 
-      <div class="guide-box">
-        <p><strong>Your Testosterone Rebuild Guide</strong></p>
-        <p>A practical framework for the first 30 days. Read it before you do anything else.</p>
-        <p><a href="{GUIDE_LINK}">Download the guide &rarr;</a></p>
-      </div>
+      <p><a href="{brief_link}">Download Your {weakest} Brief &rarr;</a></p>
 
-      <p>If you want a custom protocol built around your specific numbers, the Executive
-      Diagnostic is the next step. 30 minutes. I&rsquo;ll tell you exactly what to fix
-      and in what order. The $150 is credited in full if you move into coaching.</p>
+      <p>The brief covers the what. If you want the exact daily execution — the full protocol I use with private clients — that's the {protocol_name}: the complete system for your weak corner.</p>
 
-      <div class="cta-wrap">
-        <a class="cta" href="{APPLY_LINK}">Book Your Executive Diagnostic &mdash; $150 &rarr;</a>
-      </div>
+      <p><a href="{protocol_link}">Get the {protocol_name} — $47 &rarr;</a></p>
 
-      <p class="sig">&mdash; Francisco &middot; The CEO Shred</p>
+      <p>One note: most men who score weak in one corner have a second corner quietly failing. The Executive Endocrine Stack covers all three protocols — $141 of material for $97, lifetime access.</p>
+
+      <p><a href="{stack_link}">Get the Full Stack — $97 &rarr;</a></p>
+
+      <p class="sig">Francisco<br>The CEO Shred<br>theceoshred.com</p>
+
+      <p><em>P.S. Start with the brief. It's free and it will tell you if I know what I'm talking about.</em></p>
     """
+    
+    if band == "Red Zone":
+        body += f"""
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 32px 0;">
+      <p>One more thing. Your score puts you in the range where a self-guided protocol may not be enough. If you want me to look at your specific situation directly, book an Executive Diagnostic — 30 minutes, $150, credited toward coaching if we work together. Application-only.</p>
+      
+      <div class="cta-wrap">
+        <a class="cta" href="{APPLY_LINK}">Book Your Executive Diagnostic &rarr;</a>
+      </div>
+        """
+        
     return _wrap(body)
 
-def email_r_text(firstname: str, archetype: str, tier: str,
-                 t_score: int, i_score: int, c_score: int,
-                 composite: int, weakest: str) -> str:
-    tier_label = tier.upper() if tier else "FUNCTIONAL"
-    return f"""Hi {firstname},
+def email_r_text(firstname: str, total: int, weakest: str, band: str) -> str:
+    protocol_info = PROTOCOL_MAP.get(weakest, PROTOCOL_MAP["Testosterone"])
+    protocol_name = protocol_info["name"]
+    protocol_link = protocol_info["link"] + get_utm("email0")
+    stack_link = STACK_LINK + get_utm("email0")
+    brief_link = BRIEF_MAP.get(weakest, BRIEF_MAP["Testosterone"])
+    
+    text = f"""{firstname},
 
-Your results are in.
+Your Hormone Scorecard results are in.
 
-OVERALL SCORE: {composite}/100 — {tier_label}
-Testosterone: {t_score}/100
-Insulin: {i_score}/100
-Cortisol: {c_score}/100
-Weakest corner: {weakest}
+Score: {total}. Weakest corner: {weakest}.
 
-Your archetype is {archetype}. This is the pattern that best describes where your endocrine system is right now — and where the leverage is.
+That weak corner matters more than the total. {weakest} is the system currently costing you the most — energy, waistline, recovery, drive. The other two can't compensate for it. That's how the hormone triangle works.
 
-Most men at your level have the discipline. What they're missing is the correct target. Your weakest corner ({weakest}) is the upstream signal that's been running the wrong program. Fix that first and everything else responds.
+I've put together a short brief that explains your result and what's happening underneath it:
 
-YOUR TESTOSTERONE REBUILD GUIDE
-A practical framework for the first 30 days. Read it before you do anything else.
-{GUIDE_LINK}
+Download Your {weakest} Brief → {brief_link}
 
-If you want a custom protocol built around your specific numbers, the Executive Diagnostic is the next step. 30 minutes. I'll tell you exactly what to fix and in what order. The $150 is credited in full if you move into coaching.
+The brief covers the what. If you want the exact daily execution — the full protocol I use with private clients — that's the {protocol_name}: the complete system for your weak corner.
 
-Book Your Executive Diagnostic — $150:
-{APPLY_LINK}
+Get the {protocol_name} — $47 → {protocol_link}
 
-— Francisco · The CEO Shred
+One note: most men who score weak in one corner have a second corner quietly failing. The Executive Endocrine Stack covers all three protocols — $141 of material for $97, lifetime access.
+
+Get the Full Stack — $97 → {stack_link}
+
+Francisco
+The CEO Shred
+theceoshred.com
+
+P.S. Start with the brief. It's free and it will tell you if I know what I'm talking about.
 """
+    if band == "Red Zone":
+        text += f"""
+---
+One more thing. Your score puts you in the range where a self-guided protocol may not be enough. If you want me to look at your specific situation directly, book an Executive Diagnostic — 30 minutes, $150, credited toward coaching if we work together. Application-only.
+
+Book Your Executive Diagnostic → {APPLY_LINK}
+"""
+    return text
 
 
 # ── Email A — +1 day ──────────────────────────────────────────────────────────
 
-EMAIL_A_SUBJECT = "It was never about willpower"
+EMAIL_A_SUBJECT = "The corner you didn't score"
 
 def email_a_html(firstname: str, weakest: str) -> str:
+    protocol_info = PROTOCOL_MAP.get(weakest, PROTOCOL_MAP["Testosterone"])
+    protocol_name = protocol_info["name"]
+    protocol_link = protocol_info["link"] + get_utm("emailA")
+    stack_link = STACK_LINK + get_utm("emailA")
+    
     body = f"""
-      <p>Hi {firstname},</p>
+      <p>{firstname},</p>
 
-      <p>Your scorecard flagged <strong>{weakest}</strong> as your weakest area.
-      That&rsquo;s not a small detail &mdash; it&rsquo;s the bottleneck dragging down
-      everything downstream: energy, fat storage, drive, recovery.</p>
+      <p>Yesterday you found your weakest corner: {weakest}.</p>
 
-      <p>Here&rsquo;s the part most men get wrong: this isn&rsquo;t a discipline problem.
-      You already have discipline &mdash; you run a company. If effort alone fixed it,
-      you&rsquo;d already be lean and sharp. The issue is upstream of effort. Your
-      endocrine system is sending the wrong signals, and no amount of willpower
-      out-argues a hormone.</p>
+      <p>Here's what the scorecard can't show you: the three systems don't fail independently. Cortisol drives insulin resistance. Insulin resistance suppresses testosterone. Low testosterone raises stress reactivity — which raises cortisol.</p>
 
-      <p>Change the signal and the body follows. Your <strong>{weakest}</strong> score
-      is exactly where to start.</p>
+      <p>It's a triangle. Fix one corner while the others leak, and you're bailing water with a hole in the boat.</p>
 
-      <div class="guide-box">
-        <p><strong>In case you missed it</strong></p>
-        <p>Your Testosterone Rebuild Guide is still waiting. If you haven&rsquo;t read it yet,
-        start there &mdash; it covers the first 30 days.</p>
-        <p><a href="{GUIDE_LINK}">Read the guide &rarr;</a></p>
-      </div>
+      <p>That's why I don't sell the protocols as a "pick one" solution. The Executive Endocrine Stack is all three — Testosterone Protocol, Cortisol Reset Protocol, Insulin Resistance Protocol. 200+ pages. The complete operating system for male hormones after 40.</p>
+
+      <p>$141 separately. $97 as the Stack. Lifetime access, including future updates.</p>
 
       <div class="cta-wrap">
-        <a class="cta" href="{APPLY_LINK}">Book Your Executive Diagnostic &mdash; $150 &rarr;</a>
+        <a class="cta" href="{stack_link}">Get the Stack — $97 &rarr;</a>
       </div>
 
-      <p>One 30-minute conversation. We pinpoint what&rsquo;s suppressing your
-      {weakest} and map your 90-day fix. The $150 is credited if you move into
-      coaching.</p>
+      <p>If budget is the constraint, start with your weak corner alone: <a href="{protocol_link}">{protocol_name} — $47</a></p>
 
-      <p class="sig">&mdash; Francisco &middot; The CEO Shred</p>
+      <p class="sig">Francisco<br>The CEO Shred</p>
+
+      <p><em>P.S. Every man I've coached who fixed only one corner came back within 90 days for the other two. Save yourself the round trip.</em></p>
     """
     return _wrap(body)
 
 def email_a_text(firstname: str, weakest: str) -> str:
-    return f"""Hi {firstname},
+    protocol_info = PROTOCOL_MAP.get(weakest, PROTOCOL_MAP["Testosterone"])
+    protocol_name = protocol_info["name"]
+    protocol_link = protocol_info["link"] + get_utm("emailA")
+    stack_link = STACK_LINK + get_utm("emailA")
+    
+    return f"""{firstname},
 
-Your scorecard flagged {weakest} as your weakest area. That's not a small detail — it's the bottleneck dragging down everything downstream: energy, fat storage, drive, recovery.
+Yesterday you found your weakest corner: {weakest}.
 
-Here's the part most men get wrong: this isn't a discipline problem. You already have discipline — you run a company. If effort alone fixed it, you'd already be lean and sharp. The issue is upstream of effort. Your endocrine system is sending the wrong signals, and no amount of willpower out-argues a hormone.
+Here's what the scorecard can't show you: the three systems don't fail independently. Cortisol drives insulin resistance. Insulin resistance suppresses testosterone. Low testosterone raises stress reactivity — which raises cortisol.
 
-Change the signal and the body follows. Your {weakest} score is exactly where to start.
+It's a triangle. Fix one corner while the others leak, and you're bailing water with a hole in the boat.
 
-IN CASE YOU MISSED IT
-Your Testosterone Rebuild Guide is still waiting. If you haven't read it yet, start there — it covers the first 30 days.
-{GUIDE_LINK}
+That's why I don't sell the protocols as a "pick one" solution. The Executive Endocrine Stack is all three — Testosterone Protocol, Cortisol Reset Protocol, Insulin Resistance Protocol. 200+ pages. The complete operating system for male hormones after 40.
 
-Book Your Executive Diagnostic — $150:
-{APPLY_LINK}
+$141 separately. $97 as the Stack. Lifetime access, including future updates.
 
-One 30-minute conversation. We pinpoint what's suppressing your {weakest} and map your 90-day fix. The $150 is credited if you move into coaching.
+Get the Stack — $97 → {stack_link}
 
-— Francisco · The CEO Shred
+If budget is the constraint, start with your weak corner alone: {protocol_name} — $47 → {protocol_link}
+
+Francisco
+The CEO Shred
+
+P.S. Every man I've coached who fixed only one corner came back within 90 days for the other two. Save yourself the round trip.
 """
 
 
 # ── Email B — +3 days ─────────────────────────────────────────────────────────
 
-EMAIL_B_SUBJECT = "530 to 800, no TRT"
+EMAIL_B_SUBJECT = "Self-guided or done-with-you"
 
-def email_b_html(firstname: str, weakest: str) -> str:
+def email_b_html(firstname: str) -> str:
+    stack_link = STACK_LINK + get_utm("emailB")
+    
     body = f"""
       <p>{firstname},</p>
 
-      <p>A few of the men who&rsquo;ve run this:</p>
+      <p>Two kinds of men take the scorecard.</p>
 
-      <p>
-        <strong>Nassif, 44</strong> &mdash; tripled his testosterone naturally in six months.
-        Blood-work verified, no TRT.<br />
-        <strong>Gary, 45</strong> &mdash; down 27 lbs in five months, and the food noise gone.<br />
-        <strong>Ibrahim, 37</strong> &mdash; 10.3 kg in 90 days, abs back, sleep fixed,
-        through two weeks of travel.
-      </p>
+      <p>The first kind takes the result, gets the system, and executes alone. Disciplined, self-directed, doesn't need a coach — needs a map. If that's you, the Executive Endocrine Stack is your map. All three protocols, $97, done.</p>
 
-      <p>None had more time or discipline than you. They had a system built around their
-      actual numbers instead of guesses.</p>
+      <p><a href="{stack_link}">Get the Stack — $97 &rarr;</a></p>
 
-      <p>That&rsquo;s what the Executive Diagnostic is: 30 minutes to review your situation,
-      pinpoint what&rsquo;s suppressing your <strong>{weakest}</strong>, and map your protocol.
-      $150, credited in full if you move forward. No pitch &mdash; I&rsquo;ll tell you straight
-      if it&rsquo;s a fit.</p>
+      <p>The second kind has read enough. He doesn't want another PDF — he wants someone to look at his numbers, his schedule, his bloodwork, and tell him exactly what to do. That's the Executive Diagnostic: 30 minutes with me, application-only, $150 — credited in full if we end up working together.</p>
 
       <div class="cta-wrap">
-        <a class="cta" href="{APPLY_LINK}">Book Your Executive Diagnostic &mdash; $150 &rarr;</a>
+        <a class="cta" href="{APPLY_LINK}">Apply for the Executive Diagnostic &rarr;</a>
       </div>
 
-      <p class="sig">&mdash; Francisco &middot; The CEO Shred</p>
+      <p>Both roads fix the triangle. One is self-guided, one is guided. The only wrong move is the third option: knowing your weak corner and doing nothing about it.</p>
+
+      <p class="sig">Francisco<br>The CEO Shred</p>
     """
     return _wrap(body)
 
-def email_b_text(firstname: str, weakest: str) -> str:
+def email_b_text(firstname: str) -> str:
+    stack_link = STACK_LINK + get_utm("emailB")
+    
     return f"""{firstname},
 
-A few of the men who've run this:
+Two kinds of men take the scorecard.
 
-Nassif, 44 — tripled his testosterone naturally in six months. Blood-work verified, no TRT.
-Gary, 45 — down 27 lbs in five months, and the food noise gone.
-Ibrahim, 37 — 10.3 kg in 90 days, abs back, sleep fixed, through two weeks of travel.
+The first kind takes the result, gets the system, and executes alone. Disciplined, self-directed, doesn't need a coach — needs a map. If that's you, the Executive Endocrine Stack is your map. All three protocols, $97, done.
 
-None had more time or discipline than you. They had a system built around their actual numbers instead of guesses.
+Get the Stack — $97 → {stack_link}
 
-That's what the Executive Diagnostic is: 30 minutes to review your situation, pinpoint what's suppressing your {weakest}, and map your protocol. $150, credited in full if you move forward. No pitch — I'll tell you straight if it's a fit.
+The second kind has read enough. He doesn't want another PDF — he wants someone to look at his numbers, his schedule, his bloodwork, and tell him exactly what to do. That's the Executive Diagnostic: 30 minutes with me, application-only, $150 — credited in full if we end up working together.
 
-Book Your Executive Diagnostic — $150:
-{APPLY_LINK}
+Apply for the Executive Diagnostic → {APPLY_LINK}
 
-— Francisco · The CEO Shred
+Both roads fix the triangle. One is self-guided, one is guided. The only wrong move is the third option: knowing your weak corner and doing nothing about it.
+
+Francisco
+The CEO Shred
 """
 
 
 # ── Email C — +6 days ─────────────────────────────────────────────────────────
 
-EMAIL_C_SUBJECT = "In or out, {firstname}?"  # subject uses firstname — formatted at send time
+def email_c_subject(firstname: str, band: str) -> str:
+    if band == "Red Zone":
+        return "Your score, one week later"
+    return f"Closing the loop, {firstname}"
 
-def email_c_subject(firstname: str) -> str:
-    return f"In or out, {firstname}?"
+def email_c_html(firstname: str, weakest: str, total: str, band: str) -> str:
+    stack_link = STACK_LINK + get_utm("emailC")
+    
+    if band == "Red Zone":
+        # Variant 2 (Diagnostic-led close)
+        body = f"""
+          <p>{firstname},</p>
 
-def email_c_html(firstname: str, total: str) -> str:
-    body = f"""
-      <p>{firstname},</p>
+          <p>A week ago you scored {total} — with {weakest} as your weakest corner, in the range I'd flag if you were a private client.</p>
 
-      <p>You took the scorecard for a reason. Your score (<strong>{total}</strong>) and your
-      weak corner didn&rsquo;t happen by accident, and they won&rsquo;t fix themselves.</p>
+          <p>I'll be direct: at that level, I don't recommend starting self-guided. Not because the protocols don't work — because your situation likely has more than one corner failing, and sequencing matters. Get the order wrong and you'll spend three months fixing the wrong thing first.</p>
 
-      <p>I keep a small number of diagnostic slots each week. If you want yours, take it now.
-      If the timing&rsquo;s wrong, no problem &mdash; the guide is yours to keep either way.</p>
+          <p>The right move is 30 minutes with me looking at your actual situation. That's the Executive Diagnostic. Application-only, $150, credited in full toward coaching if we work together. You leave the call knowing exactly what to fix first — whether we work together or not.</p>
 
-      <div class="guide-box">
-        <p><strong>Your Testosterone Rebuild Guide</strong></p>
-        <p><a href="{GUIDE_LINK}">Read it here &rarr;</a></p>
-      </div>
+          <div class="cta-wrap">
+            <a class="cta" href="{APPLY_LINK}">Apply for the Executive Diagnostic &rarr;</a>
+          </div>
 
-      <div class="cta-wrap">
-        <a class="cta" href="{APPLY_LINK}">Book Your Executive Diagnostic &mdash; $150 &rarr;</a>
-      </div>
+          <p>If you'd rather go alone anyway, the full Stack is here: <a href="{stack_link}">Get the Stack — $97</a> — all three protocols.</p>
 
-      <p class="sig">&mdash; Francisco &middot; The CEO Shred</p>
-    """
+          <p>Either way, decide. A score like yours doesn't improve by being aware of it.</p>
+
+          <p class="sig">Francisco<br>The CEO Shred</p>
+        """
+    else:
+        # Variant 1 (Stack-led close)
+        body = f"""
+          <p>{firstname},</p>
+
+          <p>Six days ago you found out {weakest} is your weak corner.</p>
+
+          <p>Question: what's changed since?</p>
+
+          <p>If the answer is "nothing," that's normal — and it's also the whole problem. Information doesn't change a body. Execution does. And execution needs a system, because willpower is exactly the resource a compromised {weakest} drains first.</p>
+
+          <p>The system is built. The Executive Endocrine Stack — all three protocols, 200+ pages, $97, lifetime access.</p>
+
+          <div class="cta-wrap">
+            <a class="cta" href="{stack_link}">Get the Stack — $97 &rarr;</a>
+          </div>
+
+          <p>This is the last email in this series. No countdown timers, no fake deadline — the price doesn't change. But your biology doesn't wait either. Every month in the current state is a month of compounding in the wrong direction.</p>
+
+          <p>Your call.</p>
+
+          <p class="sig">Francisco<br>The CEO Shred</p>
+
+          <p><em>P.S. If you'd rather have this handled with direct guidance, the Executive Diagnostic is here: <a href="{APPLY_LINK}">Apply for the Diagnostic</a> — 30 minutes, $150, credited toward coaching.</em></p>
+        """
     return _wrap(body)
 
-def email_c_text(firstname: str, total: str) -> str:
-    return f"""{firstname},
+def email_c_text(firstname: str, weakest: str, total: str, band: str) -> str:
+    stack_link = STACK_LINK + get_utm("emailC")
+    
+    if band == "Red Zone":
+        # Variant 2
+        return f"""{firstname},
 
-You took the scorecard for a reason. Your score ({total}) and your weak corner didn't happen by accident, and they won't fix themselves.
+A week ago you scored {total} — with {weakest} as your weakest corner, in the range I'd flag if you were a private client.
 
-I keep a small number of diagnostic slots each week. If you want yours, take it now. If the timing's wrong, no problem — the guide is yours to keep either way.
+I'll be direct: at that level, I don't recommend starting self-guided. Not because the protocols don't work — because your situation likely has more than one corner failing, and sequencing matters. Get the order wrong and you'll spend three months fixing the wrong thing first.
 
-Your Testosterone Rebuild Guide: {GUIDE_LINK}
+The right move is 30 minutes with me looking at your actual situation. That's the Executive Diagnostic. Application-only, $150, credited in full toward coaching if we work together. You leave the call knowing exactly what to fix first — whether we work together or not.
 
-Book Your Executive Diagnostic — $150:
-{APPLY_LINK}
+Apply for the Executive Diagnostic → {APPLY_LINK}
 
-— Francisco · The CEO Shred
+If you'd rather go alone anyway, the full Stack is here: {stack_link} — $97, all three protocols.
+
+Either way, decide. A score like yours doesn't improve by being aware of it.
+
+Francisco
+The CEO Shred
+"""
+    else:
+        # Variant 1
+        return f"""{firstname},
+
+Six days ago you found out {weakest} is your weak corner.
+
+Question: what's changed since?
+
+If the answer is "nothing," that's normal — and it's also the whole problem. Information doesn't change a body. Execution does. And execution needs a system, because willpower is exactly the resource a compromised {weakest} drains first.
+
+The system is built. The Executive Endocrine Stack — all three protocols, 200+ pages, $97, lifetime access.
+
+Get the Stack — $97 → {stack_link}
+
+This is the last email in this series. No countdown timers, no fake deadline — the price doesn't change. But your biology doesn't wait either. Every month in the current state is a month of compounding in the wrong direction.
+
+Your call.
+
+Francisco
+The CEO Shred
+
+P.S. If you'd rather have this handled with direct guidance, the Executive Diagnostic is here: {APPLY_LINK} — 30 minutes, $150, credited toward coaching.
 """

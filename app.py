@@ -235,11 +235,12 @@ def scorecard_webhook():
 
     # 2. Send instant result email
     try:
-        subject = email_r_subject(archetype)
-        html    = email_r_html(first_name or "there", archetype, tier,
-                               t_score, i_score, c_score, composite, weakest)
-        text    = email_r_text(first_name or "there", archetype, tier,
-                               t_score, i_score, c_score, composite, weakest)
+        # band = tier string from Lovable frontend; worst tier displays as "Red Zone"
+        band = tier
+        
+        subject = email_r_subject(composite)
+        html    = email_r_html(first_name or "there", composite, weakest, band)
+        text    = email_r_text(first_name or "there", composite, weakest, band)
         ok = send_transactional_email(
             to_email=email,
             to_name=first_name or email,
@@ -327,6 +328,8 @@ def followup_test():
     total     = attrs.get("SCORECARD_TOTAL") or "unknown"
     sent_flags = get_sent_flags(detail)
 
+    band = attrs.get("SCORECARD_TIER") or "functional"
+
     if force_email in ("A", "B", "C"):
         # Force-send the specified email regardless of timing
         try:
@@ -341,15 +344,15 @@ def followup_test():
                 ok = send_transactional_email(
                     to_email=email, to_name=firstname,
                     subject=EMAIL_B_SUBJECT,
-                    html_content=email_b_html(firstname, weakest),
-                    text_content=email_b_text(firstname, weakest),
+                    html_content=email_b_html(firstname),
+                    text_content=email_b_text(firstname),
                 )
             else:  # C
                 ok = send_transactional_email(
                     to_email=email, to_name=firstname,
-                    subject=email_c_subject(firstname),
-                    html_content=email_c_html(firstname, total),
-                    text_content=email_c_text(firstname, total),
+                    subject=email_c_subject(firstname, band),
+                    html_content=email_c_html(firstname, weakest, total, band),
+                    text_content=email_c_text(firstname, weakest, total, band),
                 )
             if ok:
                 mark_sent(email, force_email, sent_flags)
