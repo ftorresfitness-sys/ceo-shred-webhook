@@ -37,7 +37,7 @@ PROTOCOL_MAP = {
 BRIEF_MAP = {
     "Testosterone": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view",
     "Cortisol & Stress": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view",
-    "Cortisol": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view",
+    "Cortisol": "https://drive.google.com/file/d/1GsBdt6tkzGiycSZGJf71_KMMzdoE_64z/view",
     "Insulin": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view"
 }
 
