@@ -8,13 +8,20 @@ All tokens are replaced before sending; no Brevo template IDs needed.
 APPLY_LINK = "https://theceoshred.com/apply"
 STACK_LINK = "https://protocols.theceoshred.com/stack"
 
-# Protocol links mapped by weakest corner
+# Protocol links mapped by weakest corner.
+# Keys cover both storage formats:
+#   "Cortisol & Stress" — set by the Render /webhook/scorecard path
+#   "Cortisol"          — set by the Supabase scorecard-submit edge function
 PROTOCOL_MAP = {
     "Testosterone": {
         "name": "The Testosterone Protocol",
         "link": "https://protocols.theceoshred.com/testosterone"
     },
     "Cortisol & Stress": {
+        "name": "The Cortisol Reset Protocol",
+        "link": "https://protocols.theceoshred.com/cortisol"
+    },
+    "Cortisol": {
         "name": "The Cortisol Reset Protocol",
         "link": "https://protocols.theceoshred.com/cortisol"
     },
@@ -26,9 +33,11 @@ PROTOCOL_MAP = {
 
 # Brief links mapped by weakest corner (using the old live brief until new ones are hosted)
 # Old live brief link: https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view
+# "Cortisol" key added to match Supabase scorecard-submit storage format.
 BRIEF_MAP = {
     "Testosterone": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view",
     "Cortisol & Stress": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view",
+    "Cortisol": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view",
     "Insulin": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view"
 }
 
