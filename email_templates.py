@@ -35,10 +35,10 @@ PROTOCOL_MAP = {
 # Old live brief link: https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view
 # "Cortisol" key added to match Supabase scorecard-submit storage format.
 BRIEF_MAP = {
-    "Testosterone": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view",
-    "Cortisol & Stress": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view",
+    "Testosterone": "https://drive.google.com/file/d/1LubWfJtQpglc6tqqiIGxs0ZUFYODYrTj/view",
+    "Cortisol & Stress": "https://drive.google.com/file/d/1GsBdt6tkzGiycSZGJf71_KMMzdoE_64z/view",
     "Cortisol": "https://drive.google.com/file/d/1GsBdt6tkzGiycSZGJf71_KMMzdoE_64z/view",
-    "Insulin": "https://drive.google.com/file/d/1nRrMTF0RlusvmgHmsqPbUPdK6BK95J8x/view"
+    "Insulin": "https://drive.google.com/file/d/1BMpjrD2MZQ90Fc_AvvIkYSBGNjrQM3Sl/view"
 }
 
 def get_utm(utm_content: str) -> str:
