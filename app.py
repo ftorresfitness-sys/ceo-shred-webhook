@@ -133,11 +133,30 @@ def stripe_webhook():
 
     session = event["data"]["object"]
     email      = (session.get("customer_details") or {}).get("email") or session.get("customer_email", "")
-    first_name = ((session.get("customer_details") or {}).get("name") or "").split()[0]
+    name_parts = ((session.get("customer_details") or {}).get("name") or "").split()
+    first_name = name_parts[0] if name_parts else ""
 
     if not email:
         app.logger.warning("checkout.session.completed received with no email")
         return jsonify({"status": "no_email"}), 200
+
+    # ── Performance Kitchen backup delivery (added 2026-07-19) ──────────────
+    # Detect Kitchen purchases by payment link / product name, send the buyer
+    # their Drive link by email, and log KITCHEN_BUYER to Brevo.
+    # Non-kitchen purchases fall through to the protocol list logic unchanged.
+    from kitchen_delivery import resolve_kitchen_plan, deliver_kitchen_purchase
+    from followup_scheduler import send_transactional_email
+
+    kitchen_plan = resolve_kitchen_plan(session)
+    if kitchen_plan:
+        kitchen_result = deliver_kitchen_purchase(
+            email=email,
+            first_name=first_name,
+            plan=kitchen_plan,
+            brevo_headers=BREVO_HEADERS,
+            send_email_fn=send_transactional_email,
+        )
+        return jsonify({"status": "ok", "kitchen": kitchen_result}), 200
 
     list_id = resolve_list_id(session)
     if list_id is None:
@@ -148,6 +167,41 @@ def stripe_webhook():
     app.logger.info(f"Brevo add result: {result}")
 
     return jsonify({"status": "ok", "result": result}), 200
+
+
+@app.route("/kitchen/test", methods=["POST"])
+def kitchen_test():
+    """
+    Admin-protected test of the Kitchen backup delivery path.
+    Sends the real delivery email and sets KITCHEN_BUYER in Brevo
+    for the given address, without a Stripe purchase.
+
+    POST body: { "email": "...", "first_name": "...", "plan": "single|full|vault" }
+    Header:    X-Admin-Key: <ADMIN_KEY>
+    """
+    admin_key = os.environ.get("ADMIN_KEY", "")
+    if admin_key and request.headers.get("X-Admin-Key", "") != admin_key:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    from kitchen_delivery import KITCHEN_PLANS, deliver_kitchen_purchase
+    from followup_scheduler import send_transactional_email
+
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    first_name = (data.get("first_name") or "").strip()
+    plan = (data.get("plan") or "").strip().lower()
+
+    if not email or plan not in KITCHEN_PLANS:
+        return jsonify({"error": "email and plan (single|full|vault) are required"}), 400
+
+    result = deliver_kitchen_purchase(
+        email=email,
+        first_name=first_name,
+        plan=plan,
+        brevo_headers=BREVO_HEADERS,
+        send_email_fn=send_transactional_email,
+    )
+    return jsonify({"status": "ok", "kitchen": result}), 200
 
 
 # ── Scorecard webhook — instant result email ─────────────────────────────────
@@ -416,7 +470,8 @@ def index():
         "version": "2.1.0",
         "endpoints": {
             "POST /webhook/scorecard": "Scorecard submission — upserts contact + sends instant result email",
-            "POST /webhook/stripe":   "Stripe webhook receiver",
+            "POST /webhook/stripe":   "Stripe webhook receiver (protocols → lists; Kitchen → backup Drive-link email + KITCHEN_BUYER)",
+            "POST /kitchen/test":     "Test Kitchen backup delivery for an email+plan (admin)",
             "GET  /health":           "Health check",
             "GET  /followup/status":  "Scheduler config and status",
             "POST /followup/test":    "Test follow-up for a specific email",
